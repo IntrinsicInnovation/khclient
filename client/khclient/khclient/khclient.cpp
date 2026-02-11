@@ -1,0 +1,192 @@
+#include <iostream>
+#include <thread>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <regex>
+#include <filesystem>
+#include <fstream>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+namespace fs = std::filesystem;
+
+// ================= CONFIG =================
+
+std::string SERVER = "https://api.cocheat.com";
+std::string WORKER_ID = "LINUX-" + std::to_string(getpid());
+
+// ================= UTIL ===================
+
+std::string getExecutableDir()
+{
+    char buf[1024];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf)-1);
+    if (len != -1) {
+        buf[len] = '\0';
+        return fs::path(buf).parent_path();
+    }
+    return ".";
+}
+
+bool foundFileDetected()
+{
+    fs::path file = fs::current_path() / "foundNEW.txt";
+    return fs::exists(file);
+}
+
+std::string strip0x(const std::string& hex)
+{
+    if (hex.size() > 2 && hex[0]=='0' && (hex[1]=='x'||hex[1]=='X'))
+        return hex.substr(2);
+    return hex;
+}
+
+// ================= CURL ===================
+
+size_t writeCallback(char* ptr,size_t size,size_t nmemb,void* userdata)
+{
+    std::string* s = (std::string*)userdata;
+    s->append(ptr,size*nmemb);
+    return size*nmemb;
+}
+
+std::string httpPost(const std::string& url,const json& body)
+{
+    CURL* curl = curl_easy_init();
+    std::string response;
+
+    std::string payload = body.dump();
+
+    struct curl_slist* headers=nullptr;
+    headers=curl_slist_append(headers,"Content-Type: application/json");
+
+    curl_easy_setopt(curl,CURLOPT_URL,url.c_str());
+    curl_easy_setopt(curl,CURLOPT_POSTFIELDS,payload.c_str());
+    curl_easy_setopt(curl,CURLOPT_HTTPHEADER,headers);
+    curl_easy_setopt(curl,CURLOPT_WRITEFUNCTION,writeCallback);
+    curl_easy_setopt(curl,CURLOPT_WRITEDATA,&response);
+
+    curl_easy_setopt(curl,CURLOPT_SSL_VERIFYPEER,0L);
+    curl_easy_setopt(curl,CURLOPT_SSL_VERIFYHOST,0L);
+
+    curl_easy_perform(curl);
+
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    return response;
+}
+
+// ================= WORKER =================
+
+void runWorker()
+{
+    while(true)
+    {
+        std::string r=httpPost(SERVER+"/lease",{
+            {"workerId",WORKER_ID},
+            {"count",1}
+        });
+
+        auto jobs=json::parse(r,nullptr,false);
+        if(!jobs.is_array()||jobs.empty()){
+            std::cout<<"No jobs, waiting...\n";
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+
+        auto job=jobs[0];
+        int chunkId=job["chunkId"];
+        std::string start=strip0x(job["start"]);
+        std::string end=strip0x(job["end"]);
+
+        std::string range=start+":"+end;
+
+
+
+       // std::string cmd = "./KeyHunt-Cuda -r " + start + ":" + end;
+       // int ret = std::system(cmd.c_str());  // Will block until KeyHunt-Cuda finishes
+
+
+        pid_t pid=fork();
+
+        if(pid==0){
+            execl("./KeyHunt",
+                  "KeyHunt",
+                  //"-t","20480",  Probably dont need this, should auto maxout thread count?
+                  "-g",
+                  "--gpui","0",
+                  "--gpux","256,256",
+                  "-o","foundNEW.txt",
+                  "-m","address",
+                  "--coin","BTC",
+                  "--range",range.c_str(),
+                  "1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU",
+                  (char*)NULL);
+
+            perror("exec failed");
+            exit(1);
+        }
+        else {
+            // Parent
+            int status;
+            while (waitpid(pid, &status, 0) == -1) {
+                // optional: sleep or handle signals
+            }
+         //   std::cout << "BYE\n";
+        }
+
+        // heartbeat loop
+        while(true)
+        {
+            int status;
+            pid_t result=waitpid(pid,&status,WNOHANG);
+
+            if(result==pid) break;
+
+            httpPost(SERVER+"/heartbeat",{
+                {"workerId",WORKER_ID},
+                {"chunkId",chunkId}
+            });
+
+            std::cout<<"Heartbeat chunk "<<chunkId<<"\n";
+
+            if(foundFileDetected()){
+                std::cout<<"\n!!! PRIVATE KEY FOUND !!!\n";
+                kill(pid,SIGTERM);
+                exit(0);
+            }
+
+            std::this_thread::sleep_for(std::chrono::minutes(10));
+        }
+
+        httpPost(SERVER+"/complete",{
+            {"workerId",WORKER_ID},
+            {"chunkId",chunkId}
+        });
+
+        std::cout<<"Completed chunk "<<chunkId<<"\n";
+    }
+}
+
+// ================= MAIN ===================
+
+int main(int argc,char** argv)
+{
+    int workers=argc>1?atoi(argv[1]):1;
+
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    std::vector<std::thread> threads;
+    for(int i=0;i<workers;i++)
+        threads.emplace_back(runWorker);
+
+    for(auto& t:threads)
+        t.join();
+
+    return 0;
+}

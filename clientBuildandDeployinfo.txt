@@ -1,0 +1,19 @@
+Build instructions (Visual Studio 2019)
+
+Create a Console App
+
+Add main.cpp and nlohmann/json.hpp
+
+Install libcurl via vcpkg:
+
+vcpkg install curl
+
+
+Link libcurl
+
+Build, then run:
+
+client.exe 4
+
+
+?? Spawns 4 workers, each asking the server for chunks

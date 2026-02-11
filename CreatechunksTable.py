@@ -1,0 +1,25 @@
+import sqlite3
+
+db = sqlite3.connect("jobs.db")
+c = db.cursor()
+
+c.execute("DROP TABLE IF EXISTS chunks")
+
+c.execute("""
+CREATE TABLE chunks (
+    id INTEGER,
+    start TEXT,
+    end TEXT,
+    subchunkID INTEGER,
+    subchunkstart TEXT,
+    subchunkend TEXT,
+    status TEXT,
+    worker TEXT,
+    heartbeat TEXT
+)
+""")
+
+db.commit()
+db.close()
+
+print("Fresh table created.")
