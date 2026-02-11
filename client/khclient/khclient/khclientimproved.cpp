@@ -6,8 +6,14 @@
 #include <cstdlib>
 #include <curl/curl.h>
 #include "json.hpp"
+#include <filesystem>
+#include <unistd.h>     // for readlink
+#include <limits.h>     // for PATH_MAX
+
+
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 static const std::string SERVER = "https://api.cocheat.com";
 static const std::string WORKER_ID = "linux-integrated-1";
@@ -101,6 +107,35 @@ json httpPost(const std::string& url,
 
     return json::parse(response);
 }
+
+
+
+//fix t his!
+
+
+void checkFoundFile()
+{
+    char exePath[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+    if (len == -1) {
+        perror("readlink");
+        return;
+    }
+    exePath[len] = '\0';
+
+    fs::path exeDir = fs::path(exePath).parent_path();
+    fs::path file = exeDir / "foundNEW.txt";
+
+    if (fs::exists(file))
+    {
+        std::cerr << "\n[!] PRIVATE KEY FOUND!\n"
+            << "[!] Check foundNEW.txt\n"
+            << "[!] File path: " << file << std::endl;
+
+        exit(0);
+    }
+}
+
 
 
 
@@ -205,8 +240,10 @@ int main() {
             {"chunkId", chunkId}
             });
 
-        std::cout << "Completed chunk "
-            << chunkId << "\n";
+        //std::cout << "Completed chunk "
+        //    << chunkId << "\n";
+        checkFoundFile();
+
     }
 
     curl_global_cleanup();
