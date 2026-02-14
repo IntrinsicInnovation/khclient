@@ -226,7 +226,8 @@ int main() {
             "-o foundNEW.txt "
             "-m address --coin BTC "
             "--range " + start + ":" + end +
-            " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
+            //WRONG this is mywallet not puzzle!!" 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
+            " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";
 
 
         int ret = system(cmd.c_str());
