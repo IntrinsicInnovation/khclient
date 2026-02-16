@@ -16,6 +16,17 @@ TEST_RANGE_SIZE = 200_000_000  # 200M keys
 
 
 
+
+stats = {
+    "found": False,
+    "found_by": None,
+    "timestamp": None,
+    "total_reports": 0
+}
+
+
+
+
 # -------------------------
 # Database helpers
 # -------------------------
@@ -108,7 +119,7 @@ def lease():
     chunk = c.fetchone()
 
     if not chunk:
-        db.close()
+        conn.close()
         return jsonify([])
 
     chunk_start = int(chunk["start"],16)
@@ -119,14 +130,14 @@ def lease():
     lease_end   = min(chunk_start + TEST_RANGE_SIZE - 1,
                       chunk_end)
 
-     c.execute("""
+    c.execute("""
             UPDATE chunks
             SET status='leased', worker=?, heartbeat=?
             WHERE id=?
         """, (worker, now, chunk["id"]))
 
-    db.commit()
-    db.close()
+    conn.commit()
+    conn.close()
 
     return jsonify([{
         "chunkId": chunk["id"],
@@ -172,6 +183,34 @@ def complete():
     conn.commit()
 
     return jsonify({"ok": True})
+
+
+
+
+#Finish this along with stats method update
+@app.route("/report_found", methods=["POST"])
+def report_found():
+    data = request.json
+
+    worker_id = data.get("workerId", "unknown")
+    key = data.get("privateKey", "unknown")
+
+    stats["found"] = True
+    stats["found_by"] = worker_id
+    stats["timestamp"] = time.time()
+    stats["total_reports"] += 1
+
+    print(f"\n KEY FOUND by {worker_id}")
+    print(f"Key: {key}\n")
+
+    return jsonify({
+        "ok": True,
+        "message": "Recorded"
+    })
+
+
+
+
 
 @app.route("/chunkstats")
 def chunkstats():

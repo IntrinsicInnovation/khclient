@@ -164,9 +164,9 @@ void reportFound() {
 //fix this , and delete above
   // R"({"workerId":"linux-01","privateKey":"see_found_file"})";
 
-  httpPost(SERVER + "/report_found", {
+  httpPost(SERVER + "/found", {
             {"workerId", WORKER_ID},
-            {"privateKey","see_found_file dude!!"}
+            {"privateKey","see_found_file"}
             });
 
 
@@ -276,10 +276,7 @@ int main() {
 
         //std::cout << "Completed chunk "
         //    << chunkId << "\n";
-        if (ret > 0)
-            reportFound();
-
-        //checkFoundFile();
+        checkFoundFile();
 
     }
 

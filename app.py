@@ -16,6 +16,17 @@ TEST_RANGE_SIZE = 200_000_000  # 200M keys
 
 
 
+
+stats = {
+    "found": False,
+    "found_by": None,
+    "timestamp": None,
+    "total_reports": 0
+}
+
+
+
+
 # -------------------------
 # Database helpers
 # -------------------------
@@ -173,6 +184,34 @@ def complete():
 
     return jsonify({"ok": True})
 
+
+
+
+#Finish this along with stats method update
+@app.route("/report_found", methods=["POST"])
+def report_found():
+    data = request.json
+
+    worker_id = data.get("workerId", "unknown")
+    key = data.get("privateKey", "unknown")
+
+    stats["found"] = True
+    stats["found_by"] = worker_id
+    stats["timestamp"] = time.time()
+    stats["total_reports"] += 1
+
+    print(f"\n KEY FOUND by {worker_id}")
+    print(f"Key: {key}\n")
+
+    return jsonify({
+        "ok": True,
+        "message": "Recorded"
+    })
+
+
+
+
+
 @app.route("/chunkstats")
 def chunkstats():
     conn = db()
@@ -235,6 +274,7 @@ def get_stats():
         "leased": leased,
         "pending": pending,
 		"progress": (completed / total) * 100,
+        "FOUND?": stats["found"]
     }
 
 
