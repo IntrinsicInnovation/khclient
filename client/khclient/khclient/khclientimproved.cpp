@@ -9,6 +9,9 @@
 #include <filesystem>
 #include <unistd.h>     // for readlink
 #include <limits.h>     // for PATH_MAX
+#include <fstream>
+#include <sstream>
+
 
 
 
@@ -110,8 +113,75 @@ json httpPost(const std::string& url,
 
 
 
-//fix t his!
 
+
+
+
+
+
+void reportFound(const std::string& key)
+{
+    httpPost(SERVER + "/report_found", {
+        {"workerId", WORKER_ID},
+        {"privateKey", key}
+        });
+}
+
+
+// ---------------------------------
+// Check for found file
+// ---------------------------------
+void checkFoundFile()
+{
+    char exePath[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+    if (len == -1) {
+        perror("readlink");
+        return;
+    }
+    exePath[len] = '\0';
+
+    fs::path exeDir = fs::path(exePath).parent_path();
+    fs::path file = exeDir / "foundNEW.txt";
+
+    if (!fs::exists(file))
+        return;
+
+    std::cerr << "\n[!] PRIVATE KEY FOUND!\n";
+    std::cerr << "[!] Reading foundNEW.txt...\n";
+
+    // ✅ Read entire file into string
+    std::ifstream in(file);
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    std::string key = buffer.str();
+
+    // trim newline if present
+    key.erase(key.find_last_not_of(" \n\r\t") + 1);
+
+    std::cerr << "[!] Key: " << key << std::endl;
+
+    // ✅ Send to server
+    reportFound(key);
+
+    // ✅ Optional: delete so it isn't re-sent
+    fs::remove(file);
+
+    std::cerr << "[!] Reported to server\n";
+
+    exit(0);
+}
+
+
+
+
+
+
+
+
+
+
+/*
 
 void checkFoundFile()
 {
@@ -140,38 +210,16 @@ void checkFoundFile()
 //call found endpoint
 void reportFound() {
     
-	/*
-	CURL* curl = curl_easy_init();
 
-    std::string json =
-        R"({"workerId":"linux-01","privateKey":"see_found_file"})";
-
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(headers, "Content-Type: application/json");
-
-    curl_easy_setopt(curl, CURLOPT_URL,
-        "http://your-server-ip:5000/report_found");
-
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-    curl_easy_perform(curl);
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-*/
-
-//fix this , and delete above
-  // R"({"workerId":"linux-01","privateKey":"see_found_file"})";
 
   httpPost(SERVER + "/report_found", {
             {"workerId", WORKER_ID},
-            {"privateKey","see_found_file dude!!"}
+            {"privateKey","privatekey"}
             });
 
 
 }
-
+*/
 
 
 // ---------------- Leasing ----------------
@@ -254,13 +302,16 @@ int main() {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            "-g --gpui 0 "
-            "--gpux 256,256 "
+            "-g --gpui 0 "    //Remove for cpu only
+            "--gpux 256,256 "  //Remove for cpu only
             "-o foundNEW.txt "
             "-m address --coin BTC "
             "--range " + start + ":" + end +
-            //WRONG this is mywallet not puzzle!!" 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
             " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";
+
+        //Test ramge (shoudl be very fast to test):
+        //"--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
+        //    " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
 
 
         int ret = system(cmd.c_str());
@@ -276,13 +327,14 @@ int main() {
 
         //std::cout << "Completed chunk "
         //    << chunkId << "\n";
-        if (ret > 0)
-            reportFound();
-
-        //checkFoundFile();
+        //if (ret > 0)
+        //    reportFound();
+        //check file instead, and just send it to the server to view as key
+        checkFoundFile();
 
     }
 
     curl_global_cleanup();
     return 0;
 }
+

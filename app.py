@@ -12,7 +12,7 @@ BUCKETS = 8                  # partition count
 
 
 
-TEST_RANGE_SIZE = 200_000_000  # 200M keys
+TEST_RANGE_SIZE = 1_000_000_500  # 200M keys
 
 
 
@@ -32,7 +32,11 @@ stats = {
 # -------------------------
 
 def db():
-    conn = sqlite3.connect(DB, check_same_thread=False)
+    conn = sqlite3.connect(
+        DB,
+        timeout=30,
+        check_same_thread=False
+    )
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -40,10 +44,9 @@ def db():
 def init_db():
     conn = db()
 
-	# PRAGMA settings (add here)
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA temp_store=MEMORY;")
+    conn.execute("PRAGMA busy_timeout=30000;")
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS chunks (
@@ -55,25 +58,38 @@ def init_db():
             heartbeat INTEGER
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS found (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            datetime INTEGER,
+            workerid TEXT,
+            privatekey TEXT
+        )
+    """)
+
     conn.commit()
+    conn.close()
 
 
 init_db()
 
-
 # -------------------------
-# Internal helpers
+# HELPERS
 # -------------------------
 
 def reclaim_expired():
     now = int(time.time())
     conn = db()
+
     conn.execute("""
         UPDATE chunks
         SET status='pending', worker=NULL
         WHERE status='leased' AND heartbeat < ?
     """, (now - LEASE_TIMEOUT,))
+
     conn.commit()
+    conn.close()
 
 
 # -------------------------
@@ -89,13 +105,7 @@ def home():
 @app.route("/lease", methods=["POST"])
 def lease():
 
-    #worker = request.json.get("workerId","test-worker")
-    #now = int(time.time())
-    #db = sqlite3.connect(DB)
-    #db.row_factory = sqlite3.Row
-    #c = db.cursor()
-
-
+  
     data = request.get_json(force=True)
     worker = data.get("workerId")
     count = int(data.get("count", 1))
@@ -131,10 +141,10 @@ def lease():
                       chunk_end)
 
     c.execute("""
-            UPDATE chunks
-            SET status='leased', worker=?, heartbeat=?
-            WHERE id=?
-        """, (worker, now, chunk["id"]))
+        UPDATE chunks
+        SET status='leased', worker=?, heartbeat=?
+        WHERE id=? AND (status IS NULL OR status='pending')
+    """, (worker, now, chunk["id"]))
 
     conn.commit()
     conn.close()
@@ -163,6 +173,7 @@ def heartbeat():
         data["workerId"]
     ))
     conn.commit()
+    conn.close()
 
     return jsonify({"ok": True})
 
@@ -181,34 +192,43 @@ def complete():
         data["workerId"]
     ))
     conn.commit()
+    conn.close()
 
     return jsonify({"ok": True})
 
 
 
-
-#Finish this along with stats method update
 @app.route("/report_found", methods=["POST"])
 def report_found():
-    data = request.json
+
+    data = request.get_json(force=True)
 
     worker_id = data.get("workerId", "unknown")
     key = data.get("privateKey", "unknown")
+
+    conn = db()
+
+    conn.execute("""
+        INSERT INTO found (datetime, workerid, privatekey)
+        VALUES (?, ?, ?)
+    """, (
+        int(time.time()),
+        worker_id,
+        key
+    ))
+
+    conn.commit()
+    conn.close()
 
     stats["found"] = True
     stats["found_by"] = worker_id
     stats["timestamp"] = time.time()
     stats["total_reports"] += 1
 
-    print(f"\n KEY FOUND by {worker_id}")
+    print(f"\nKEY FOUND by {worker_id}")
     print(f"Key: {key}\n")
 
-    return jsonify({
-        "ok": True,
-        "message": "Recorded"
-    })
-
-
+    return jsonify({"ok": True})
 
 
 
@@ -265,21 +285,28 @@ def get_stats():
 
     c.execute("SELECT COUNT(*) FROM chunks WHERE status='pending'")
     pending = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM found")
+    found_count = c.fetchone()[0]
 
     conn.close()
+    
+    progress = (completed / total * 100) if total else 0
 
     return {
         "total": total,
         "completed": completed,
         "leased": leased,
         "pending": pending,
-		"progress": (completed / total) * 100,
-        "FOUND?": stats["found"]
+        "progress": round(progress, 3),
+        "FOUND count": found_count,
+        "Found by": stats["found_by"],
+        "timestamp": stats["timestamp"]
     }
 
 
 @app.route("/stats")
-def stats():
+def stats_route():
     return jsonify(get_stats())
 
 
