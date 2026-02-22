@@ -302,8 +302,8 @@ int main() {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            "-g --gpui 0 "    //Remove for cpu only
-            "--gpux 256,256 "  //Remove for cpu only
+        //    "-g --gpui 0 "    //Remove for cpu only
+        //    "--gpux 256,256 "  //Remove for cpu only
             "-o foundNEW.txt "
             "-m address --coin BTC "
             "--range " + start + ":" + end +

@@ -110,7 +110,7 @@ def lease():
     worker = data.get("workerId")
     count = int(data.get("count", 1))
     now = int(time.time())
-    reclaim_expired()
+    #reclaim_expired()
 
     conn = db()
     c = conn.cursor()
@@ -352,7 +352,7 @@ def dashboard():
         }
 
         loadStats();
-        setInterval(loadStats, 5000);
+      //  setInterval(loadStats, 5000);
         </script>
     </body>
     </html>
