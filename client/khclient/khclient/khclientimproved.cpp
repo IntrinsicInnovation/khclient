@@ -299,6 +299,10 @@ int main() {
             std::async(std::launch::async,
                 leaseChunk);
 
+
+
+        std::cout << "Launching keyhunt\n" << std::flush;
+
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
@@ -316,7 +320,7 @@ int main() {
 
         int ret = system(cmd.c_str());
 
-        std::cout << "KeyHunt finished ("
+        std::cout << "KeyHunt finished!! -- ("
             << ret << ")\n";
 
         // Mark complete
