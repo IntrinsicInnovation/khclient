@@ -307,7 +307,7 @@ int main() {
             "-o foundNEW.txt "
             "-m address --coin BTC "
             "--range " + start + ":" + end +
-            " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";
+            " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
 
         //Test ramge (shoudl be very fast to test):
         //"--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
