@@ -1,3 +1,5 @@
+#!/bin/bash
+set -e
 
 CLIENT="./khclientimproved"
 INSTANCES=10
@@ -23,8 +25,9 @@ do
         $CLIENT -o "$FOUND_FILE" \
         > "$LOGDIR/client_$i.log" 2>&1 &
 
-    sleep 0.05
+    sleep 0.15
 done
 
 echo "All clients launched."
 
+wait
