@@ -23,7 +23,8 @@ do
 
     taskset -c $CORE \
         $CLIENT -o "$FOUND_FILE" \
-        > "$LOGDIR/client_$i.log" 2>&1 &
+        2>&1 | sed "s/^/[client-$i] /" | tee -a "$LOGDIR/client_$i.log"
+        #> "$LOGDIR/client_$i.log" 2>&1 &
 
     sleep 0.15
 done
