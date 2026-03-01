@@ -1,0 +1,17 @@
+# 1. Create venv
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# Linux
+# source venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Initialize chunks
+python init_chunks.py
+
+# 4. Run API
+uvicorn server:app --host 0.0.0.0 --port 8000
+
+

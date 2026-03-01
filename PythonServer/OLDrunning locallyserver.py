@@ -1,0 +1,176 @@
+from fastapi import FastAPI
+import sqlite3, time, random
+
+DB = "jobs.db"
+LEASE_TIMEOUT = 3 * 60 * 60  # 3 hours
+BUCKETS = 8                 # range partitions
+
+app = FastAPI()
+
+def db():
+    return sqlite3.connect(DB, check_same_thread=False)
+
+@app.on_event("startup")
+def startup():
+    c = db().cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS chunks (
+        id INTEGER PRIMARY KEY,
+        start TEXT,
+        end TEXT,
+        status TEXT,
+        worker TEXT,
+        heartbeat INTEGER
+    )
+    """)
+    db().commit()
+
+def reclaim_expired():
+    now = int(time.time())
+    conn = db()
+    conn.execute("""
+      UPDATE chunks
+      SET status='pending', worker=NULL
+      WHERE status='leased' AND heartbeat < ?
+    """, (now - LEASE_TIMEOUT,))
+    conn.commit()
+
+
+
+
+
+
+
+@app.post("/lease")
+def lease(req: dict):
+    reclaim_expired()
+
+    worker = req["workerId"]
+    count = req["count"]
+    now = int(time.time())
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute("SELECT MAX(id) FROM chunks")
+    max_id = c.fetchone()[0]
+    if max_id is None:
+        return []
+
+    leased = []
+
+    for _ in range(count):
+        bucket = random.randint(0, BUCKETS - 1)
+
+        bucket_start = (max_id // BUCKETS) * bucket
+        bucket_end   = (max_id // BUCKETS) * (bucket + 1)
+
+        c.execute("""
+            SELECT id, start, end FROM chunks
+            WHERE status='pending'
+              AND id BETWEEN ? AND ?
+            ORDER BY RANDOM()
+            LIMIT 1
+        """, (bucket_start, bucket_end))
+
+        row = c.fetchone()
+
+        if not row:
+            c.execute("""
+                SELECT id, start, end FROM chunks
+                WHERE status='pending'
+                ORDER BY RANDOM()
+                LIMIT 1
+            """)
+            row = c.fetchone()
+
+        if not row:
+            break
+
+        c.execute("""
+            UPDATE chunks
+            SET status='leased', worker=?, heartbeat=?
+            WHERE id=?
+        """, (worker, now, row[0]))
+
+        leased.append({
+            "chunkId": row[0],
+            "start": row[1],
+            "end": row[2]
+        })
+
+    conn.commit()
+    return leased
+
+
+
+
+
+
+
+
+
+
+@app.post("/heartbeat")
+def heartbeat(req: dict):
+    conn = db()
+    conn.execute("""
+      UPDATE chunks SET heartbeat=?
+      WHERE id=? AND worker=?
+    """, (int(time.time()), req["chunkId"], req["workerId"]))
+    conn.commit()
+    return {"ok": True}
+
+@app.post("/complete")
+def complete(req: dict):
+    conn = db()
+    conn.execute("""
+      UPDATE chunks
+      SET status='complete'
+      WHERE id=? AND worker=?
+    """, (req["chunkId"], req["workerId"]))
+    conn.commit()
+    return {"ok": True}
+
+@app.get("/stats")
+def stats():
+    c = db().cursor()
+    out = {}
+    for s in ("pending", "leased", "complete"):
+        c.execute("SELECT COUNT(*) FROM chunks WHERE status=?", (s,))
+        out[s] = c.fetchone()[0]
+    return out
+
+@app.get("/chunkstats")
+def chunkstats():
+    conn = db()
+    c = conn.cursor()
+
+    now = int(time.time())
+
+    c.execute("""
+        SELECT id, start, end, status, worker, heartbeat
+        FROM chunks
+        ORDER BY id ASC
+    """)
+
+    rows = c.fetchall()
+
+    results = []
+    for row in rows:
+        heartbeat = row[5]
+        results.append({
+            "chunkId": row[0],
+            "start": row[1],
+            "end": row[2],
+            "status": row[3],
+            "worker": row[4],
+            "last_heartbeat": heartbeat,
+            "seconds_since_heartbeat":
+                (now - heartbeat) if heartbeat else None
+        })
+
+    return {
+        "total_chunks": len(results),
+        "chunks": results
+    }
