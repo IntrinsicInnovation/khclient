@@ -19,8 +19,11 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 static const std::string SERVER = "https://api.cocheat.com";
-//static const std::string SERVER = "https://localhost:50476";
+//static const std::string SERVER = "https://localhost:5001";
 //static const std::string SERVER = "https://khserver-gvfhb2h5ancpash9.canadacentral-01.azurewebsites.net";
+//static const std::string SERVER = "https://khserver2-gjbcesdabwb9hufr.canadacentral-01.azurewebsites.net";
+//static const std::string SERVER = "https://khserverwindows-dsh7ebhkhpb4apbq.canadacentral-01.azurewebsites.net";
+
 
 static const std::string WORKER_ID = "linux-integrated-1";
 
@@ -360,16 +363,16 @@ int main() {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            //"-g --gpui 0 "    //Remove for cpu only
-            //"--gpux 256,256 "  //Remove for cpu only
-            "-o foundNEW.txt "
+            "-g --gpui 0 "    //Remove for cpu only
+          //  "--gpux 256,256 "  //Remove for cpu only
+          //  "-o foundNEW.txt "
             "-m address --coin BTC "
-            "--range " + start + ":" + end +
-            " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
+         //   "--range " + start + ":" + end +
+         //   " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
 
         //Test ramge (shoudl be very fast to test):
-        //"--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
-        //    " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
+        "--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
+            " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
 
 
         int ret = system(cmd.c_str());
