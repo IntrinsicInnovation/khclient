@@ -28,6 +28,21 @@ static const std::string SERVER = "https://api.cocheat.com";
 static const std::string WORKER_ID = "linux-integrated-1";
 
 
+
+
+std::string generateWorkerId() {
+    char hostname[128];
+    gethostname(hostname, sizeof(hostname));
+
+    std::stringstream ss;
+    ss << hostname << "-" << getpid() << "-" << time(NULL);
+
+    return ss.str();
+}
+
+
+
+
 // ---------------- HTTP ----------------
 
 static size_t WriteCallback(void* contents,
@@ -40,88 +55,6 @@ static size_t WriteCallback(void* contents,
 }
 
 
-/*
-json httpPost(const std::string& url,
-    const json& body) {
-
-    CURL* curl = curl_easy_init();
-    std::string response;
-
-    struct curl_slist* headers = nullptr;
-    headers = curl_slist_append(
-        headers,
-        "Content-Type: application/json");
-
-    std::string payload = body.dump();
-
-    curl_easy_setopt(curl, CURLOPT_URL,
-        url.c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER,
-        headers);
-
-    curl_easy_setopt(curl,
-        CURLOPT_POST, 1L);
-
-    curl_easy_setopt(curl,
-        CURLOPT_POSTFIELDS,
-        payload.c_str());
-
-    curl_easy_setopt(curl,
-        CURLOPT_POSTFIELDSIZE,
-        payload.size());
-
-    curl_easy_setopt(curl,
-        CURLOPT_WRITEFUNCTION,
-        WriteCallback);
-
-    curl_easy_setopt(curl,
-        CURLOPT_WRITEDATA,
-        &response);
-
-    curl_easy_setopt(curl,
-        CURLOPT_SSL_VERIFYPEER, 0L);
-
-    curl_easy_setopt(curl,
-        CURLOPT_SSL_VERIFYHOST, 0L);
-
-    curl_easy_setopt(curl,
-        CURLOPT_SSLVERSION,
-        CURL_SSLVERSION_TLSv1_2);
-
-    CURLcode res =
-        curl_easy_perform(curl);
-
-    if (res != CURLE_OK) {
-        std::cout << "CURL ERROR: "
-            << curl_easy_strerror(res)
-            << "\n";
-    }
-
-    long http_code = 0;
-    curl_easy_getinfo(curl,
-        CURLINFO_RESPONSE_CODE,
-        &http_code);
-
-    std::cout << "HTTP CODE: "
-        << http_code << "\n";
-
-    std::cout << "SERVER RAW:\n"
-        << response << "\n";
-
-    curl_slist_free_all(headers);
-    curl_easy_cleanup(curl);
-
-    if (response.empty())
-        return json();
-
-    return json::parse(response);
-}
-
-*/
-
-
-//#include <nlohmann/json.hpp>
-//using json = nlohmann::json;
 
 json httpPost(const std::string& url, const json& body) {
     CURL* curl = curl_easy_init();
@@ -341,10 +274,6 @@ int main() {
       //      << " | " << start << " → " << end << std::endl;
 
 
-
-
-
-
         std::cout << "\nLeased chunk "
             << chunkId
             << " | " << start
@@ -363,12 +292,12 @@ int main() {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            "-g --gpui 0 "    //Remove for cpu only
+          //  "-g --gpui 0 "    //Remove for cpu only
           //  "--gpux 256,256 "  //Remove for cpu only
-          //  "-o foundNEW.txt "
+			"-o foundNEW.txt "
             "-m address --coin BTC "
-         //   "--range " + start + ":" + end +
-         //   " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
+           // "--range " + start + ":" + end +
+           // " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
 
         //Test ramge (shoudl be very fast to test):
         "--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
