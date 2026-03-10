@@ -1,5 +1,5 @@
 CLIENT="./khclientimproved"
-INSTANCES=15
+INSTANCES=5
 LOGDIR="logs"
 
 # absolute path for found file
