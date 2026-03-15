@@ -27,3 +27,4 @@ done
 
 echo "All clients launched."
 
+wait
