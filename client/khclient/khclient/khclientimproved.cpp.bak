@@ -311,12 +311,9 @@ int main(int argc, char* argv[]) {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            "-g --gpui " //put gpu id here   //Remove for cpu only
-			+ std::to_string(gpu_id ) +
-
-
+         // "-g --gpui " //put gpu id here   //Comment out these 2 lines for CPU only
+		//	+ std::to_string(gpu_id ) +
         //    "--gpux 256,256 "  //Remove for cpu only
-        //    "--gpux 96,256 "  //Remove for cpu only
 
 			" -o foundNEW.txt "
             "-m address --coin BTC "
