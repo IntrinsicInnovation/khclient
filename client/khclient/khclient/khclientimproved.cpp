@@ -318,13 +318,14 @@ int main(int argc, char* argv[]) {
 			" -o foundNEW.txt "
             "-m address --coin BTC "
             "--range " + start + ":" + end +
-		    " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real BTC address for Private key range
+	   	    " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real BTC address for Private key range
+		
 		//	"--range 7D06C500000006835F:FD06C500003BA14F52"  //test longer range
 		//	" -i p71Hash160out.bin";
         
           
 
-        //Test range (for my address):
+        //TEST range (for my address):
        // "--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
        //     " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
 
