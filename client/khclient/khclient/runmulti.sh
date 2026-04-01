@@ -2,7 +2,7 @@
 set -e
 
 CLIENT="./khclientimproved"
-INSTANCES=16
+INSTANCES=64
 LOGDIR="logs"
 
 # absolute path for found file
