@@ -30,6 +30,22 @@ static const std::string WORKER_ID = "linux-integrated-1";
 
 
 
+int getGpuId(int argc, char* argv[])
+{
+    int gpu_id = 0;
+    for (int i = 1; i < argc; i++)
+    {
+        std::string arg = argv[i];
+
+        if (arg == "-gpu" && i + 1 < argc)
+        {
+            gpu_id = std::stoi(argv[i + 1]);
+            i++;
+        }
+    }
+    return gpu_id;
+}
+
 std::string generateWorkerId() {
     char hostname[128];
     gethostname(hostname, sizeof(hostname));
@@ -224,7 +240,10 @@ json leaseChunk() {
 
 // ---------------- MAIN ----------------
 
-int main() {
+int main(int argc, char* argv[]) {
+
+    int gpu_id = getGpuId(argc, argv);
+    std::cout << "Running on GPU " << gpu_id << std::endl;
 
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -292,16 +311,21 @@ int main() {
         // Run KeyHunt
         std::string cmd =
             "./KeyHunt "
-            "-g --gpui 0 "    //Remove for cpu only
-            "--gpux 256,256 "  //Remove for cpu only
-			"-o foundNEW.txt "
-            "-m address --coin BTC "
-            "--range " + start + ":" + end +
-            " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real Private key
+         // "-g --gpui " //put gpu id here   //Comment out these 2 lines for CPU only
+		//	+ std::to_string(gpu_id ) +
+        //    "--gpux 256,256 "  //Remove for cpu only
 
-        //Test ramge (shoudl be very fast to test):
-        //"--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
-        //    " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
+			" -o foundNEW.txt "
+            "-m address --coin BTC "
+        //    "--range " + start + ":" + end +
+		//	"--range 7D06C500000006835F:FD06C500003BA14F52"  //test longer range
+		//	" -i p71Hash160out.bin";
+        //    " 1PWo3JeB9jrGwfHDNpdGK54CRas7fsVzXU";  //real BTC address for Private key range
+          
+
+        //Test range (for my address):
+        "--range dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148f00000000:dbdd1b55c9e880d5b66ea8b3e8bfe8ef03a41aa9326470b8661e148fffffffff"
+            " 1J555m5SFdE3AVvgTCP7GZgJBmndM8e9xQ";
 
 
         int ret = system(cmd.c_str());
@@ -316,7 +340,7 @@ int main() {
             });
 
         //std::cout << "Completed chunk "
-        //    << chunkId << "\n";
+        //    << chunkId << "\n"; 
         //if (ret > 0)
         //    reportFound();
         //check file instead, and just send it to the server to view as key
